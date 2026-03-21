@@ -1,7 +1,12 @@
 #Requires AutoHotkey v2.0
 #SingleInstance Force
 #NoTrayIcon
-
+;@Ahk2Exe-SetName        Win11 SetTool
+;@Ahk2Exe-SetVersion     1.0.0
+;@Ahk2Exe-SetCompanyName Zerin
+;@Ahk2Exe-SetCopyright   Copyright © 2026 Zerin
+;@Ahk2Exe-SetDescription Windows 11 设置工具
+;@Ahk2Exe-SetLanguage    0x0804
 if (!A_IsAdmin) {
     Run Format('*RunAs "{1}"', A_ScriptFullPath)
     ExitApp
