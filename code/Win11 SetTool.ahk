@@ -1,5 +1,5 @@
 #Requires AutoHotkey v2.0
-#SingleInstance Force
+#SingleInstance Off
 #NoTrayIcon
 ;@Ahk2Exe-SetName        Win11 SetTool
 ;@Ahk2Exe-SetVersion     1.0.0
