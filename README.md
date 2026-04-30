@@ -16,7 +16,7 @@
 2. 克隆仓库：`git clone https://github.com/你的用户名/Win11-SetTool.git`
 3. 双击 `AHK.ahk` 运行
 
-## 🛠️ 开发环境
+## 开发环境
 
 - AutoHotkey v2.0+
 - Windows 10/11 x64
