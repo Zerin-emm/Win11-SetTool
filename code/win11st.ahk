@@ -7,6 +7,8 @@
 ;@Ahk2Exe-SetCopyright   Copyright © 2026 Zerin
 ;@Ahk2Exe-SetDescription Windows 11 设置工具
 ;@Ahk2Exe-SetLanguage    0x0804
+DllCall("SetProcessDPIAware")
+
 if (!A_IsAdmin) {
     Run Format('*RunAs "{1}"', A_ScriptFullPath)
     ExitApp
@@ -15,11 +17,10 @@ if (!A_IsAdmin) {
 global g_Initializing := true
 
 MainGui := Gui(, "Win11 SetTool")
-mainGui.BackColor := "0xF8FBFD"
-mainGui.SetFont("s12", "Microsoft YaHei")
+MainGui.BackColor := "0xF8FBFD"
+MainGui.SetFont("s12", "Microsoft YaHei")
 
 FileMenu := Menu()
-FileMenu.Add("导出日志(&O)", OutputLog)
 FileMenu.Add("退出(&E)", (*) => ExitApp())
 helpMenu := Menu()
 helpMenu.Add("帮助(&H)", (*) => Run("https://zcn2uzvdaiwh.feishu.cn/wiki/RJRqwq5BpiSmWkksq3McyE7Qn6d"))
@@ -32,28 +33,24 @@ MainGui.MenuBar := menus
 About(*) {
     global MainGui
     
-    ; 禁用主窗口
-    MainGui.Opt("-Disabled")  ; 先确保启用状态
+    MainGui.Opt("-Disabled")
     MainGui.Opt("+Disabled") 
-    AboutGui := Gui("+Owner" . MainGui.Hwnd . " ", "关于")
+    AboutGui := Gui("+Owner" . MainGui.Hwnd . " -MaximizeBox -MinimizeBox", "关于")
     AboutGui.BackColor := "0xF8FBFD"
     AboutGui.SetFont("s12", "Microsoft YaHei")
     AboutGui.Add("Text", "x10 y10", "Win11 SetTool v1.0.0")
     AboutGui.Add("Text", "x10 y35", "作者: Zerin")
-    webLink := AboutGui.Add("Text", "x10 y60 cBlue", "GitHub")
-    webLink.OnEvent("Click", (*) => Run("https://github.com/Zerin-emm/Win11-SetTool"))
-    btn := AboutGui.Add("Button", "x240 y66 h25 Default", "确定")
-    btn.OnEvent("Click", (*) => (AboutGui.Destroy(), MainGui.Opt("-Disabled"), MainGui.Opt("+AlwaysOnTop -AlwaysOnTop")))
+    AboutGui.Add("Text", "x10 y60 cBlue", "GitHub").OnEvent("Click", (*) => Run("https://github.com/Zerin-emm/Win11-SetTool"))
+    AboutGui.Add("Button", "x240 y66 h25 Default", "确定").OnEvent("Click", (*) => (AboutGui.Destroy(), MainGui.Opt("-Disabled"), WinActivate("ahk_id " . MainGui.Hwnd)))
+    AboutGui.OnEvent("Close", (*) => (AboutGui.Destroy(), MainGui.Opt("-Disabled"), WinActivate("ahk_id " . MainGui.Hwnd)))
     AboutGui.Show("w300 h100")
 }
-SetRegValue(key, valueName, value, type := "REG_DWORD", logMsg := "") {
+
+SetRegValue(key, valueName, value, type := "REG_DWORD") {
     try {
         RegWrite value, type, key, valueName
-        if (logMsg != "")
-            WriteLog(logMsg)
         return true
     } catch as e {
-        WriteLog("注册表写入失败: " . e.Message)
         DllCall("user32\MessageBox", "Ptr", MainGui.Hwnd, "Str", "注册表写入失败`n`n错误信息: " . e.Message, "Str", "错误", "UInt", 0x10)
         return false
     }
@@ -62,44 +59,22 @@ SetRegValue(key, valueName, value, type := "REG_DWORD", logMsg := "") {
 GetRegValue(key, valueName, default := "") {
     try {
         return RegRead(key, valueName)
-    } catch as e {
-        WriteLog("注册表读取失败: " . e.Message)
+    } catch {
         return default
     }
 }
 
 RegKeyExists(key) {
     try {
-        shell := ComObject("WScript.Shell")
-        shell.RegRead(key . "\")
+        RegRead key
         return true
-    } catch as e {
-        WriteLog("注册表读取失败: " . e.Message)
+    } catch {
         return false
     }
 }
 
-WriteLog(msg) {
-    logFile := EnvGet("APPDATA") . "\Windows SetTool_log.txt"
-    if !FileExist(logFile)
-        FileAppend("", logFile, "UTF-8")
-    FileAppend("[" . FormatTime(, "yyyy-MM-dd HH:mm:ss") . "] " . msg . "`n", logFile, "UTF-8")
-}
-
 WrapHandler(callback) {
     return (c, *) => (g_Initializing ? "" : callback(c))
-}
-
-OutputLog(*) {
-    sourceFile := EnvGet("APPDATA") . "\Windows SetTool_log.txt"
-    if !FileExist(sourceFile) {
-        DllCall("user32\MessageBox", "Ptr", MainGui.Hwnd, "Str", "日志文件不存在", "Str", "错误", "UInt", 0x10)
-        return
-    }
-    if (selectedDir := FileSelect("D", , "选择保存目录")) {
-        FileCopy(sourceFile, selectedDir . "\Windows SetTool_log.txt", 1)
-        DllCall("user32\MessageBox", "Ptr", MainGui.Hwnd, "Str", "日志文件已导出到: " . selectedDir . "\Windows SetTool_log.txt", "Str", "成功", "UInt", 0x40)
-    }
 }
 
 MainGui.Add("GroupBox", "x10 y10 w300 h440", "资源管理器设置")
@@ -122,7 +97,7 @@ global ctl_1012 := MainGui.Add("Checkbox", "x20 y425", "关闭打开文件安全
 
 MainGui.Add("GroupBox", "x320 y10 w140 h440", "快捷方式")
 MainGui.Add("Button", "x340 y45 w100 h50", "重启`n资源管理器").OnEvent("Click", AHK_1013)
-mainGui.Add("Text", "x340 y120 w100 h1 BackgroundDCDCDC")
+MainGui.Add("Text", "x340 y120 w100 h1 BackgroundDCDCDC")
 MainGui.Add("Button", "x340 y145 w100 h50", "刷新`n图标缓存").OnEvent("Click", AHK_1014)
 MainGui.Add("Button", "x340 y225 w100 h50", "清空回收站").OnEvent("Click", AHK_1015)
 MainGui.Add("Button", "x340 y305 w100 h50", "性能选项").OnEvent("Click", AHK_1016)
@@ -145,7 +120,7 @@ MainGui.Add("GroupBox", "x470 y200 w340 h250", "Windows设置")
 MainGui.Add("Button", "x480 y225 w90 h30", "控制面板").OnEvent("Click", AHK_1026)
 MainGui.Add("Button", "x585 y225 w90 h30", "磁盘管理").OnEvent("Click", AHK_1027)
 MainGui.Add("Button", "x690 y225 w90 h30", "设备管理器").OnEvent("Click", AHK_1028)
-mainGui.Add("Text", "x480 y265 w300 h1 BackgroundDCDCDC")
+MainGui.Add("Text", "x480 y265 w300 h1 BackgroundDCDCDC")
 global ctl_1029 := MainGui.Add("Checkbox", "x480 y275", "关闭搜索要点")
 global ctl_1030 := MainGui.Add("Checkbox", "x640 y275", "关闭推荐的项目")
 global ctl_1031 := MainGui.Add("Checkbox", "x480 y305", "关闭广告追踪")
@@ -192,21 +167,21 @@ ctl_1037.OnEvent("Click", WrapHandler(AHK_1037))
 MainGui.Show("w821 h460")
 
 SyncSettings() {
-    global ctl_1001, ctl_1002, ctl_1003, ctl_1004, ctl_1005, ctl_1006
-    global ctl_1007, ctl_1008, ctl_1009, ctl_1010, ctl_1011_1, ctl_1011_2, ctl_1012, ctl_1018, ctl_1019, ctl_1020, ctl_1021, ctl_1022, ctl_1023, ctl_1024, ctl_1025, ctl_1029, ctl_1030, ctl_1031, ctl_1032, ctl_1033, ctl_1034, ctl_1035, ctl_1036, ctl_1037
+    global ctl_1001, ctl_1002, ctl_1003, ctl_1004, ctl_1005, ctl_1006, ctl_1007, ctl_1008, ctl_1009, ctl_1010, ctl_1011_1, ctl_1011_2, ctl_1012, ctl_1018, ctl_1019, ctl_1020, ctl_1021, ctl_1022, ctl_1023, ctl_1024, ctl_1025, ctl_1029, ctl_1030, ctl_1031, ctl_1032, ctl_1033, ctl_1034, ctl_1035, ctl_1036, ctl_1037
     global g_Initializing
     ctl_1001.Value := GetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "AutoCheckSelect", 0)
     ctl_1002.Value := !GetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "HideFileExt", 1)
     ctl_1003.Value := (GetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "Hidden", 2) = 1)
     ctl_1004.Value := GetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer", "ShowFrequent", 0)
-    ctl_1005.Value := RegKeyExists("HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Icons") && (GetRegValue("HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Icons", "29", "") != "")
-    ctl_1006.Value := RegKeyExists("HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Icons") && (GetRegValue("HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Icons", "77", "") != "")
+    ctl_1005.Value := (GetRegValue("HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Icons", "29", "") != "")
+    ctl_1006.Value := (GetRegValue("HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Icons", "77", "") != "")
     ctl_1007.Value := GetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CabinetState", "FullPath", 0)
     ctl_1008.Value := (GetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer", "Link", 1) = 0)
     ctl_1009.Choose(RegKeyExists("HKCU\SOFTWARE\Classes\CLSID\{2aa9162e-c906-4dd9-ad0b-3d24a8eef5a0}") ? 1 : 2)
     ctl_1010.Choose(GetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "LaunchTo", 1) = 1 ? 1 : 2)
-    ctl_1011_1.Value := RegKeyExists("HKCU\SOFTWARE\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InProcServer32")
-    ctl_1011_2.Value := !RegKeyExists("HKCU\SOFTWARE\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InProcServer32")
+    ctl_1011 := RegKeyExists("HKCU\SOFTWARE\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InProcServer32")
+    ctl_1011_1.Value := ctl_1011
+    ctl_1011_2.Value := !ctl_1011
     ctl_1012.Value := (GetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\Zones\3", "1806", 1) = 0)
     ctl_1018.Choose(GetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Search", "SearchboxTaskbarMode", 3) + 1)
     ctl_1019.Value := AHK_1019_1()
@@ -232,35 +207,29 @@ SyncSettings() {
 
 AHK_1001(c, *) {
     SetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "AutoCheckSelect", c.Value)
-    WriteLog("显示项目复选框: " . (c.Value ? "已开启" : "已关闭"))
 }
 
 AHK_1002(c, *) {
     SetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "HideFileExt", !c.Value)
-    WriteLog("显示文件拓展名: " . (c.Value ? "已开启" : "已关闭"))
 }
 
 AHK_1003(c, *) {
     SetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "Hidden", c.Value ? 1 : 2)
-    WriteLog("显示隐藏的项目: " . (c.Value ? "已开启" : "已关闭"))
 }
 
 AHK_1004(c, *) {
     SetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer", "ShowFrequent", c.Value)
-    WriteLog("显示常用文件夹: " . (c.Value ? "已开启" : "已关闭"))
 }
 
 AHK_1005(c, *) {
     if c.Value {
-        SetRegValue("HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Icons", "29", "C:\Windows\System32\imageres.dll,197", "REG_SZ", "去除快捷方式小箭头：已开启")
+        SetRegValue("HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Icons", "29", "C:\Windows\System32\imageres.dll,197", "REG_SZ")
         AHK_1013()
     } else {
         try {
             RegDelete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Icons", "29"
             AHK_1013()
-            WriteLog("去除快捷方式小箭头：已关闭")
         } catch as e {
-            WriteLog("去除快捷方式小箭头关闭失败: " . e.Message)
             DllCall("user32\MessageBox", "Ptr", MainGui.Hwnd, "Str", "去除快捷方式小箭头关闭失败`n`n错误信息: " . e.Message, "Str", "错误", "UInt", 0x10)
         }
     }
@@ -268,15 +237,13 @@ AHK_1005(c, *) {
 
 AHK_1006(c, *) {
     if c.Value {
-        SetRegValue("HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Icons", "77", "C:\Windows\System32\imageres.dll,197", "REG_SZ", "去除管理员盾牌：已开启")
+        SetRegValue("HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Icons", "77", "C:\Windows\System32\imageres.dll,197", "REG_SZ")
         AHK_1014()
     } else {
         try {
             RegDelete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Icons", "77"
             AHK_1014()
-            WriteLog("去除管理员盾牌：已关闭")
         } catch as e {
-            WriteLog("去除管理员盾牌关闭失败: " . e.Message)
             DllCall("user32\MessageBox", "Ptr", MainGui.Hwnd, "Str", "去除管理员盾牌关闭失败`n`n错误信息: " . e.Message, "Str", "错误", "UInt", 0x10)
         }
     }
@@ -284,13 +251,11 @@ AHK_1006(c, *) {
 
 AHK_1007(c, *) {
     SetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CabinetState", "FullPath", c.Value)
-    WriteLog("在标题栏中显示完整路径: " . (c.Value ? "已开启" : "已关闭"))
 }
 
 AHK_1008(c, *) {
     SetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer", "Link", c.Value ? 0 : 1)
     AHK_1013()
-    WriteLog("创建快捷方式时不加`"快捷方式`"后缀: " . (c.Value ? "已开启" : "已关闭"))
 }
 
 AHK_1009(c, *) {
@@ -303,23 +268,19 @@ AHK_1009(c, *) {
         try RegWrite "Apartment", "REG_SZ", "HKCU\SOFTWARE\Classes\CLSID\{6480100b-5a83-4d1e-9f69-8ae5a88e9a33}\InProcServer32", "ThreadingModel"
         try RegWrite "13000000000000000000000018000000", "REG_BINARY", "HKCU\SOFTWARE\Microsoft\Internet Explorer\Toolbar\ShellBrowser", "ITBar7Layout"
         AHK_1013()
-        WriteLog("资源管理器风格: Win10")
     } else {
         try Run("reg delete `"HKCU\SOFTWARE\Classes\CLSID\{2aa9162e-c906-4dd9-ad0b-3d24a8eef5a0}`" /f", , "Hide")
         try Run("reg delete `"HKCU\SOFTWARE\Classes\CLSID\{6480100b-5a83-4d1e-9f69-8ae5a88e9a33}`" /f", , "Hide")
         try Run("reg delete `"HKCU\SOFTWARE\Microsoft\Internet Explorer\Toolbar\ShellBrowser\ITBar7Layout`" /f", , "Hide")
         AHK_1013()
-        WriteLog("资源管理器风格: Win11")
     }
 }
 
 AHK_1010(c, *) {
     if (c.Value = 1) {
         SetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "LaunchTo", 1)
-        WriteLog("打开资源管理器时打开: 此电脑")
     } else {
         SetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "LaunchTo", 0)
-        WriteLog("打开资源管理器时打开: 主文件夹")
     }
 }
 
@@ -327,9 +288,7 @@ AHK_1011_1(c, *) {
     try {
         RegWrite("", "REG_SZ", "HKCU\SOFTWARE\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InProcServer32")
         AHK_1013()
-        WriteLog("右键菜单风格: Win10 经典风格")
     } catch as e {
-        WriteLog("切换右键菜单风格失败: " . e.Message)
         DllCall("user32\MessageBox", "Ptr", MainGui.Hwnd, "Str", "切换右键菜单风格失败`n`n错误信息: " . e.Message, "Str", "错误", "UInt", 0x10)
     }
 }
@@ -337,19 +296,16 @@ AHK_1011_1(c, *) {
 AHK_1011_2(c, *) {
     Run("reg delete `"HKCU\SOFTWARE\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}`" /f", , "Hide")
     AHK_1013()
-    WriteLog("右键菜单风格: Win11 现代风格")
 }
 
 AHK_1012(c, *) {
     SetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\Zones\3", "1806", c.Value ? 0 : 1)
-    WriteLog("关闭打开文件安全警告: " . (c.Value ? "已开启" : "已关闭"))
 }
 
 AHK_1013(*) {
     RunWait("taskkill /f /im explorer.exe", , "Hide")
     Sleep(1000)
     Run("explorer.exe")
-    WriteLog("重启资源管理器")
 }
 
 AHK_1014(*) {
@@ -367,29 +323,23 @@ AHK_1014(*) {
     try FileDelete(appData . "\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\IconCache.db")
 
     Run("explorer.exe")
-    WriteLog("刷新图标缓存")
 }
 
 AHK_1015(*) {
     DllCall("shell32\SHEmptyRecycleBinW", "Ptr", 0, "Ptr", 0, "UInt", 0)
-    WriteLog("清空回收站")
 }
 
 AHK_1016(*) {
     Run("systempropertiesperformance.exe")
-    WriteLog("打开性能选项")
 }
 
 AHK_1017(*) {
     Run("control.exe desk.cpl,,0")
-    WriteLog("打开桌面图标设置")
 }
 
 
 AHK_1018(c, *) {
     SetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Search", "SearchboxTaskbarMode", c.Value - 1)
-    modes := ["隐藏", "仅搜索图标", "搜索框", "搜索框和标签"]
-    WriteLog("搜索按钮: " . modes[c.Value])
 }
 
 AHK_1019_1() {
@@ -421,43 +371,35 @@ AHK_1019_2(enable) {
             }
         }
     } catch as e {
-        WriteLog("切换自动隐藏任务栏失败: " . e.Message)
         DllCall("user32\MessageBox", "Ptr", MainGui.Hwnd, "Str", "切换自动隐藏任务栏失败`n`n错误信息: " . e.Message, "Str", "错误", "UInt", 0x10)
     }
 }
 
 AHK_1019(c, *) {
     AHK_1019_2(c.Value)
-    WriteLog("自动隐藏任务栏: " . (c.Value ? "已开启" : "已关闭"))
 }
 
 AHK_1020(c, *) {
     SetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "ShowTaskViewButton", c.Value ? 1 : 0)
     DllCall("user32\MessageBox", "Ptr", MainGui.Hwnd, "Str", "可能会导致任务视图图标显示异常，如有异常请刷新图标缓存", "Str", "提示", "UInt", 0x40)
-    WriteLog("显示任务视图: " . (c.Value ? "已开启" : "已关闭"))
 }
 
 AHK_1021(c, *) {
     SetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "ShowSecondsInSystemClock", c.Value ? 1 : 0)
-    WriteLog("托盘时间显示秒: " . (c.Value ? "已开启" : "已关闭"))
 }
 
 AHK_1022(c, *) {
     SetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings", "TaskbarEndTask", c.Value ? 1 : 0)
-    WriteLog("右键结束任务: " . (c.Value ? "已开启" : "已关闭"))
 }
 
 AHK_1023(c, *) {
     SetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "TaskbarAl", c.Value - 1)
-    modes := ["靠左", "居中"]
-    WriteLog("任务栏对齐: " . modes[c.Value])
     Run(A_ScriptFullPath)
     ExitApp()
 }
 
 AHK_1024(c, *) {
     SetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "TaskbarDa", c.Value ? 0 : 1)
-    WriteLog("关闭小组件: " . (c.Value ? "已开启" : "已关闭"))
     Sleep(1000)
     Run("ms-settings:taskbar")
     DllCall("user32\MessageBox", "Ptr", MainGui.Hwnd, "Str", "该选项因权限原因，有可能有效有可能无效`n`n如果无效请尝试手动关闭", "Str", "提示", "UInt", 0x40)
@@ -465,28 +407,22 @@ AHK_1024(c, *) {
 
 AHK_1025(c, *) {
     SetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "TaskbarGlomLevel", c.Value - 1)
-    modes := ["始终", "任务栏已满时", "从不"]
-    WriteLog("任务栏按钮合并: " . modes[c.Value])
 }
 
 AHK_1026(*) {
     Run("control.exe")
-    WriteLog("打开控制面板")
 }
 
 AHK_1027(*) {
     Run("diskmgmt.msc")
-    WriteLog("打开磁盘管理")
 }
 
 AHK_1028(*) {
     Run("devmgmt.msc")
-    WriteLog("打开设备管理器")
 }
 
 AHK_1029(c, *) {
     SetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\SearchSettings", "IsDynamicSearchBoxEnabled", c.Value ? 0 : 1)
-    WriteLog("关闭搜索要点: " . (c.Value ? "已开启" : "已关闭"))
 }
 
 AHK_1030(c, *) {
@@ -507,7 +443,6 @@ AHK_1030(c, *) {
         Run("ms-settings:personalization-start")
         DllCall("user32\MessageBox", "Ptr", MainGui.Hwnd, "Str", "已启用推荐的项目", "Str", "提示", "UInt", 0x40)
     }
-    WriteLog("关闭推荐的项目: " . (c.Value ? "已开启" : "已关闭"))
 }
 
 AHK_1031(c, *) {
@@ -527,18 +462,18 @@ AHK_1031(c, *) {
         Run("ms-settings:privacy-general")
         DllCall("user32\MessageBox", "Ptr", MainGui.Hwnd, "Str", "已开启广告跟踪", "Str", "提示", "UInt", 0x40)
     }
-    WriteLog("关闭广告跟踪: " . (c.Value ? "已开启" : "已关闭"))
 }
 
 AHK_1032(c, *) {
     if c.Value {
         Run("useraccountcontrolsettings.exe")
-        DllCall("user32\MessageBox", "Ptr", MainGui.Hwnd, "Str", "该选项建议手动设置`n`n禁用-始终不要通知我-从不通知", "Str", "提示", "UInt", 0x40)
+        Sleep(500)
+        DllCall("user32\MessageBox", "Ptr", MainGui.Hwnd, "Str", "该选项建议手动设置`n`n禁用 - 始终不要通知我 - 从不通知", "Str", "提示", "UInt", 0x40040)
     } else {
         Run("useraccountcontrolsettings.exe")
-        DllCall("user32\MessageBox", "Ptr", MainGui.Hwnd, "Str", "该选项建议手动设置`n`n默认-仅当应用尝试更改我的计算机时通知我", "Str", "提示", "UInt", 0x40)
+        Sleep(500)
+        DllCall("user32\MessageBox", "Ptr", MainGui.Hwnd, "Str", "该选项建议手动设置`n`n默认 - 仅当应用尝试更改我的计算机时通知我", "Str", "提示", "UInt", 0x40040)
     }
-    WriteLog("禁用UAC提示: " . (c.Value ? "已开启" : "已关闭"))
 }
 
 AHK_1033(c, *) {
@@ -553,12 +488,10 @@ AHK_1033(c, *) {
         SetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\SearchSettings", "IsMSACloudSearchEnabled", 1)
         SetRegValue("HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\SearchSettings", "IsAADCloudSearchEnabled", 1)
     }
-    WriteLog("关闭搜索历史记录: " . (c.Value ? "已开启" : "已关闭"))
 }
 
 AHK_1034(c, *) {
     SetRegValue("HKCU\Control Panel\Accessibility\StickyKeys", "Flags", c.Value ? "26" : "510", "REG_SZ")
-    WriteLog("禁用粘滞键: " . (c.Value ? "已开启" : "已关闭"))
     if DllCall("user32\MessageBox", "Ptr", MainGui.Hwnd, "Str", "该设置需要重启电脑才能完全生效`n`n是否立即重启电脑？", "Str", "重启电脑", "UInt", 0x24) = 6
         Shutdown(2)
 }
@@ -566,7 +499,7 @@ AHK_1034(c, *) {
 AHK_1035_1() {
     try {
         tempFile := EnvGet("TEMP") . "\powerplan.txt"
-        RunWait('powershell -Command "powercfg /getactivescheme | Out-File -FilePath `"' . tempFile . '`" -Encoding UTF8"', , "Hide")
+        RunWait('powershell -NoProfile -Command "powercfg /getactivescheme | Out-File -FilePath `"' . tempFile . '`" -Encoding UTF8"', , "Hide")
         content := FileRead(tempFile)
         FileDelete(tempFile)
         if InStr(content, "381b4222-f694-41f0-9685-ff5bb260df2e")
@@ -582,17 +515,14 @@ AHK_1035_1() {
 AHK_1035(c, *) {
     if (c.Value = 1) {
         RunWait('powershell -Command "powercfg /setactive 381b4222-f694-41f0-9685-ff5bb260df2e"', , "Hide")
-        WriteLog("电源计划: 平衡")
     } else if (c.Value = 2) {
         RunWait('powershell -Command "powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"', , "Hide")
-        WriteLog("电源计划: 高性能")
     }
 }
 
 AHK_1036(c, *) {
     SetRegValue("HKLM\SYSTEM\ControlSet001\Services\PcaSvc", "Start", c.Value ? 4 : 2)
     Run(c.Value ? "sc stop PcaSvc" : "sc start PcaSvc", , "Hide")
-    WriteLog("禁用PCA: " . (c.Value ? "已开启" : "已关闭"))
 }
 
 AHK_1037(c, *) {
@@ -617,5 +547,4 @@ AHK_1037(c, *) {
         Run("ms-settings:windowsupdate")
         DllCall("user32\MessageBox", "Ptr", MainGui.Hwnd, "Str", "Windows更新已恢复`n您可继续更新", "Str", "提示", "UInt", 0x40)
     }
-    WriteLog("Windows更新延长: " . (c.Value ? "已开启" : "已关闭"))
 }
