@@ -8,8 +8,8 @@
 
 ### 方法 1：直接使用
 1. 下载 [Release](https://github.com/Zerin-emm/Win11-SetTool/releases) 中的 `Win11_SetTool_x64.exe`
-2.1 已关闭UAC-双击运行
-2.2 未关闭UAC-右键-以管理员身份运行/双击运行+UAC弹窗点击 是
+2. 已关闭UAC-双击运行
+3. 未关闭UAC-右键-以管理员身份运行/双击运行+UAC弹窗点击 是
 
 ### 方法 2：从源码运行
 1. 安装 [AutoHotkey v2](https://www.autohotkey.com/)
