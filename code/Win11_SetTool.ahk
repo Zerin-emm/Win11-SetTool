@@ -17,16 +17,24 @@ if (!A_IsAdmin) {
 global g_Initializing := true
 
 MainGui := Gui(, "Win11 SetTool")
-MainGui.BackColor := "0xF8FBFD"
+MainGui.BackColor := "0xFFFFFF"
 MainGui.SetFont("s12", "Microsoft YaHei")
 
 FileMenu := Menu()
 FileMenu.Add("退出(&E)", (*) => ExitApp())
 helpMenu := Menu()
-helpMenu.Add("帮助(&H)", (*) => Run("https://zcn2uzvdaiwh.feishu.cn/wiki/RJRqwq5BpiSmWkksq3McyE7Qn6d"))
+helpMenu.Add("帮助(&H)", (*) => Run("https://github.com/Zerin-emm/Win11-SetTool/wiki"))
 helpMenu.Add("关于(&A)", (*) => About())
+toolMenu := Menu()
+toolMenu.Add("编辑hosts(&H)", (*) => EditHosts())
+toolMenu.Add("系统信息(&I)", (*) => Run("msinfo32.exe"))
+toolMenu.Add("磁盘清理(&C)", (*) => Run("cleanmgr.exe"))
+toolMenu.Add("注册表编辑器(&R)", (*) => Run("regedit.exe"))
+toolMenu.Add("环境变量(&E)", (*) => Run("rundll32.exe sysdm.cpl,EditEnvironmentVariables"))
+
 menus := MenuBar()
 menus.Add("文件(&F)", FileMenu)
+menus.Add("工具(&T)", toolMenu)
 menus.Add("帮助(&H)", helpMenu)
 MainGui.MenuBar := menus
 
@@ -36,7 +44,7 @@ About(*) {
     MainGui.Opt("-Disabled")
     MainGui.Opt("+Disabled") 
     AboutGui := Gui("+Owner" . MainGui.Hwnd . " -MaximizeBox -MinimizeBox", "关于")
-    AboutGui.BackColor := "0xF8FBFD"
+    AboutGui.BackColor := "0xF9F9F9"
     AboutGui.SetFont("s12", "Microsoft YaHei")
     AboutGui.Add("Text", "x10 y10", "Win11 SetTool v1.0.0")
     AboutGui.Add("Text", "x10 y35", "作者: Zerin")
@@ -44,6 +52,11 @@ About(*) {
     AboutGui.Add("Button", "x240 y66 h25 Default", "确定").OnEvent("Click", (*) => (AboutGui.Destroy(), MainGui.Opt("-Disabled"), WinActivate("ahk_id " . MainGui.Hwnd)))
     AboutGui.OnEvent("Close", (*) => (AboutGui.Destroy(), MainGui.Opt("-Disabled"), WinActivate("ahk_id " . MainGui.Hwnd)))
     AboutGui.Show("w300 h100")
+}
+
+EditHosts(*) {
+    global MainGui
+    Run("notepad.exe " . "C:\Windows\System32\drivers\etc\hosts")
 }
 
 SetRegValue(key, valueName, value, type := "REG_DWORD") {
@@ -497,19 +510,24 @@ AHK_1034(c, *) {
 }
 
 AHK_1035_1() {
-    try {
-        tempFile := EnvGet("TEMP") . "\powerplan.txt"
-        RunWait('powershell -NoProfile -Command "powercfg /getactivescheme | Out-File -FilePath `"' . tempFile . '`" -Encoding UTF8"', , "Hide")
-        content := FileRead(tempFile)
-        FileDelete(tempFile)
-        if InStr(content, "381b4222-f694-41f0-9685-ff5bb260df2e")
+    ; 定义电源计划 GUID
+    static GUID_BALANCED := Buffer(16)
+    static GUID_HIGH_PERF := Buffer(16)
+
+    ; 解析 GUID 字符串到 Buffer
+    DllCall("ole32\CLSIDFromString", "WStr", "{381b4222-f694-41f0-9685-ff5bb260df2e}", "Ptr", GUID_BALANCED)
+    DllCall("ole32\CLSIDFromString", "WStr", "{8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c}", "Ptr", GUID_HIGH_PERF)
+
+    ; 获取当前活动电源计划
+    activeGuid := 0
+    if DllCall("powrprof\PowerGetActiveScheme", "Ptr", 0, "Ptr*", &activeGuid, "UInt") = 0 {
+        if DllCall("ole32\IsEqualGUID", "Ptr", activeGuid, "Ptr", GUID_BALANCED)
             return 1
-        else if InStr(content, "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c")
+        if DllCall("ole32\IsEqualGUID", "Ptr", activeGuid, "Ptr", GUID_HIGH_PERF)
             return 2
-        return 1
-    } catch {
-        return 1
+        DllCall("LocalFree", "Ptr", activeGuid)
     }
+    return 1
 }
 
 AHK_1035(c, *) {
